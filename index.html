@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Signal Terminal — BTC/ETH/SOL</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500&display=swap');
+
+  :root{
+    --bg:#0A0D13;
+    --panel:#11151D;
+    --panel-2:#161B26;
+    --line:#232A38;
+    --txt:#E7EAF0;
+    --muted:#7A8699;
+    --btc:#F7931A;
+    --eth:#8FA3C7;
+    --sol1:#9945FF;
+    --sol2:#14F195;
+    --buy:#17E3A6;
+    --sell:#FF4D66;
+    --hold:#F0B429;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 15% -10%, rgba(153,69,255,0.10), transparent 45%),
+      radial-gradient(circle at 90% 10%, rgba(247,147,26,0.08), transparent 40%),
+      var(--bg);
+    color:var(--txt);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding-bottom:40px;
+  }
+  h1,h2,.mono-title{font-family:'Space Grotesk',sans-serif;}
+  .num{font-family:'IBM Plex Mono',monospace;}
+
+  /* ticker tape */
+  .tape-wrap{
+    background:#000;
+    border-bottom:1px solid var(--line);
+    overflow:hidden;
+    white-space:nowrap;
+    height:38px;
+  }
+  .tape{
+    display:inline-flex;
+    align-items:center;
+    height:38px;
+    animation:scroll 22s linear infinite;
+  }
+  .tape span{
+    padding:0 24px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    color:var(--muted);
+    border-right:1px solid var(--line);
+  }
+  .tape span b{color:var(--txt); margin-right:6px;}
+  @keyframes scroll{
+    0%{transform:translateX(0);}
+    100%{transform:translateX(-50%);}
+  }
+
+  header.main{
+    padding:28px 32px 10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  header.main h1{
+    font-size:22px;
+    letter-spacing:0.3px;
+  }
+  header.main h1 span{color:var(--muted); font-weight:500; font-size:13px; display:block; margin-top:4px; font-family:'Inter';}
+  .status{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--buy); box-shadow:0 0 8px var(--buy);}
+  .dot.off{background:var(--sell); box-shadow:0 0 8px var(--sell);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(320px,1fr));
+    gap:18px;
+    padding:18px 32px;
+  }
+
+  .card{
+    background:linear-gradient(180deg, var(--panel-2), var(--panel));
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .card::before{
+    content:"";
+    position:absolute; top:0; left:0; right:0; height:3px;
+  }
+  .card.btc::before{background:var(--btc);}
+  .card.eth::before{background:var(--eth);}
+  .card.sol::before{background:linear-gradient(90deg,var(--sol1),var(--sol2));}
+
+  .card-top{display:flex; justify-content:space-between; align-items:flex-start;}
+  .coin-name{font-size:13px; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase;}
+  .coin-price{font-size:30px; font-weight:600; margin-top:4px;}
+  .coin-change{font-size:13px; margin-top:4px; font-weight:600;}
+  .up{color:var(--buy);} .down{color:var(--sell);}
+
+  canvas.spark{width:100%; height:54px; display:block; margin-top:10px;}
+
+  .metrics{
+    display:flex; gap:14px; margin-top:14px; font-size:11px; color:var(--muted);
+  }
+  .metrics div b{display:block; color:var(--txt); font-size:14px; font-family:'IBM Plex Mono',monospace; margin-top:2px;}
+
+  .gauge-wrap{margin-top:16px; display:flex; align-items:center; gap:16px;}
+  canvas.gauge{flex-shrink:0;}
+  .signal-box{flex:1;}
+  .signal-label{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:20px;
+    font-weight:700;
+    letter-spacing:0.5px;
+  }
+  .signal-conf{font-size:12px; color:var(--muted); margin-top:2px;}
+  .signal-buy{color:var(--buy);}
+  .signal-sell{color:var(--sell);}
+  .signal-hold{color:var(--hold);}
+
+  .bars{margin-top:14px; font-size:11px; color:var(--muted);}
+  .bar-row{display:flex; align-items:center; gap:8px; margin-top:6px;}
+  .bar-row span:first-child{width:70px; flex-shrink:0;}
+  .bar-track{flex:1; height:5px; background:#0000004d; border-radius:3px; overflow:hidden;}
+  .bar-fill{height:100%; border-radius:3px;}
+
+  footer{
+    padding:20px 32px 0;
+    font-size:11.5px;
+    color:var(--muted);
+    line-height:1.6;
+    max-width:900px;
+  }
+  footer b{color:var(--txt);}
+  .err{color:var(--sell); font-size:12px; margin-top:10px;}
+</style>
+</head>
+<body>
+
+<div class="tape-wrap">
+  <div class="tape" id="tape"></div>
+</div>
+
+<header class="main">
+  <h1>Signal Terminal<span>Realtime crypto price feed &amp; buy/sell probability engine</span></h1>
+  <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">connecting…</span></div>
+</header>
+
+<div class="grid" id="grid"></div>
+
+<footer id="footer">
+  <p><b>Sumber data:</b> harga & perubahan 24 jam dari CoinGecko (<span class="num">simple/price</span>, IDR langsung), candle untuk indikator dari CoinGecko (<span class="num">coins/{id}/ohlc</span>, interval otomatis ±30 menit). <b>Metodologi:</b> skor probabilitas dihitung dari kombinasi tertimbang RSI(14), persilangan SMA(9/21), dan momentum harga pada candle tersebut. Ini adalah indikator teknikal sederhana, <b>bukan nasihat keuangan</b> — pasar crypto sangat volatil dan sinyal ini bisa salah. Selalu lakukan riset sendiri (DYOR) dan atur manajemen risiko sebelum bertransaksi.</p>
+  <p id="errBox" class="err"></p>
+</footer>
+
+<script>
+const COINS = [
+  {sym:'btc', cg:'bitcoin',  name:'Bitcoin',  cls:'btc', accent:'#F7931A'},
+  {sym:'eth', cg:'ethereum', name:'Ethereum', cls:'eth', accent:'#8FA3C7'},
+  {sym:'sol', cg:'solana',   name:'Solana',   cls:'sol', accent:'#14F195'},
+];
+
+const state = {};
+COINS.forEach(c=> state[c.sym] = {price:null, changePct:null, closes:[], score:50});
+
+// ---------- build DOM ----------
+const grid = document.getElementById('grid');
+COINS.forEach(c=>{
+  const card = document.createElement('div');
+  card.className = 'card ' + c.cls;
+  card.innerHTML = `
+    <div class="card-top">
+      <div>
+        <div class="coin-name">${c.name} · ${c.sym.toUpperCase()}/IDR</div>
+        <div class="coin-price num" id="price-${c.sym}">--</div>
+        <div class="coin-change num" id="change-${c.sym}">--</div>
+      </div>
+    </div>
+    <canvas class="spark" id="spark-${c.sym}" width="600" height="54"></canvas>
+    <div class="metrics">
+      <div>RSI<b id="rsi-${c.sym}">--</b></div>
+      <div>SMA 9/21<b id="sma-${c.sym}">--</b></div>
+      <div>Momentum<b id="mom-${c.sym}">--</b></div>
+    </div>
+    <div class="gauge-wrap">
+      <canvas class="gauge" id="gauge-${c.sym}" width="100" height="60"></canvas>
+      <div class="signal-box">
+        <div class="signal-label" id="signal-${c.sym}">MENGHITUNG…</div>
+        <div class="signal-conf" id="conf-${c.sym}">mengumpulkan data candle…</div>
+      </div>
+    </div>
+    <div class="bars">
+      <div class="bar-row"><span>Sell</span><div class="bar-track"><div class="bar-fill" id="bar-${c.sym}" style="width:50%; background:linear-gradient(90deg, var(--sell), var(--hold), var(--buy));"></div></div><span>Buy</span></div>
+    </div>
+  `;
+  grid.appendChild(card);
+});
+
+// ticker tape content (duplicated for seamless loop)
+function fmtIDR(n){
+  return 'Rp' + Math.round(n).toLocaleString('id-ID');
+}
+function renderTape(){
+  const tape = document.getElementById('tape');
+  const parts = COINS.map(c=>{
+    const s = state[c.sym];
+    const price = s.price ? fmtIDR(s.price) : '--';
+    const chg = s.changePct!=null ? (s.changePct>=0?'+':'')+s.changePct.toFixed(2)+'%' : '--';
+    return `<span><b>${c.sym.toUpperCase()}</b>${price} <span style="color:${s.changePct>=0?'#17E3A6':'#FF4D66'}">${chg}</span></span>`;
+  }).join('');
+  tape.innerHTML = parts + parts; // duplicate for loop
+}
+
+// ---------- indicator math ----------
+function sma(arr, period){
+  if(arr.length < period) return null;
+  const slice = arr.slice(-period);
+  return slice.reduce((a,b)=>a+b,0)/period;
+}
+function rsi(arr, period=14){
+  if(arr.length < period+1) return null;
+  let gains=0, losses=0;
+  for(let i=arr.length-period; i<arr.length; i++){
+    const diff = arr[i]-arr[i-1];
+    if(diff>=0) gains+=diff; else losses-=diff;
+  }
+  if(losses===0) return 100;
+  const rs = (gains/period)/(losses/period);
+  return 100 - (100/(1+rs));
+}
+function momentum(arr, period=10){
+  if(arr.length < period+1) return null;
+  const past = arr[arr.length-1-period];
+  const now = arr[arr.length-1];
+  return ((now-past)/past)*100;
+}
+
+function computeScore(closes){
+  const r = rsi(closes,14);
+  const s9 = sma(closes,9);
+  const s21 = sma(closes,21);
+  const mom = momentum(closes,10);
+  if(r==null || s9==null || s21==null || mom==null) return null;
+
+  // RSI component: <30 bullish, >70 bearish, linear around 50
+  let rsiScore = 50 - (r-50); // inverse: low RSI -> high buy score
+  rsiScore = Math.max(0, Math.min(100, rsiScore));
+
+  // SMA crossover component
+  const smaDiffPct = ((s9-s21)/s21)*100;
+  let smaScore = 50 + smaDiffPct*20; // amplify small diffs
+  smaScore = Math.max(0, Math.min(100, smaScore));
+
+  // Momentum component
+  let momScore = 50 + mom*8;
+  momScore = Math.max(0, Math.min(100, momScore));
+
+  // weighted blend
+  const finalScore = rsiScore*0.4 + smaScore*0.35 + momScore*0.25;
+  return {finalScore, r, s9, s21, mom};
+}
+
+// ---------- drawing ----------
+function drawSpark(sym, closes, accent){
+  const canvas = document.getElementById('spark-'+sym);
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0,0,w,h);
+  if(closes.length<2) return;
+  const min = Math.min(...closes), max = Math.max(...closes);
+  const range = (max-min)||1;
+  ctx.beginPath();
+  closes.forEach((c,i)=>{
+    const x = (i/(closes.length-1))*w;
+    const y = h - ((c-min)/range)*h*0.85 - h*0.075;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+  // fill gradient under line
+  const grad = ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0, accent+'55');
+  grad.addColorStop(1, accent+'00');
+  ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+}
+
+function drawGauge(sym, score){
+  const canvas = document.getElementById('gauge-'+sym);
+  const ctx = canvas.getContext('2d');
+  const w=100,h=60, cx=50, cy=55, radius=42;
+  ctx.clearRect(0,0,w,h);
+  // background arc
+  ctx.beginPath();
+  ctx.arc(cx,cy,radius,Math.PI,0);
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = '#232A38';
+  ctx.stroke();
+  // colored arc up to score
+  const angle = Math.PI + (score/100)*Math.PI;
+  ctx.beginPath();
+  ctx.arc(cx,cy,radius,Math.PI,angle);
+  ctx.lineWidth = 8;
+  let color = '#F0B429';
+  if(score>=60) color = '#17E3A6';
+  if(score<=40) color = '#FF4D66';
+  ctx.strokeStyle = color;
+  ctx.stroke();
+  // needle
+  const needleAngle = Math.PI + (score/100)*Math.PI;
+  const nx = cx + Math.cos(needleAngle)*(radius-14);
+  const ny = cy + Math.sin(needleAngle)*(radius-14);
+  ctx.beginPath();
+  ctx.moveTo(cx,cy);
+  ctx.lineTo(nx,ny);
+  ctx.strokeStyle = '#E7EAF0';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx,cy,3,0,2*Math.PI);
+  ctx.fillStyle = '#E7EAF0';
+  ctx.fill();
+}
+
+function updateSignalUI(sym, result){
+  const barEl = document.getElementById('bar-'+sym);
+  const sigEl = document.getElementById('signal-'+sym);
+  const confEl = document.getElementById('conf-'+sym);
+  const rsiEl = document.getElementById('rsi-'+sym);
+  const smaEl = document.getElementById('sma-'+sym);
+  const momEl = document.getElementById('mom-'+sym);
+
+  if(!result){
+    sigEl.textContent = 'MENGHITUNG…';
+    sigEl.className = 'signal-label';
+    confEl.textContent = 'mengumpulkan data candle…';
+    return;
+  }
+  const {finalScore, r, s9, s21, mom} = result;
+  drawGauge(sym, finalScore);
+
+  rsiEl.textContent = r.toFixed(1);
+  smaEl.textContent = s9>s21 ? 'Bullish ↑' : 'Bearish ↓';
+  momEl.textContent = (mom>=0?'+':'')+mom.toFixed(2)+'%';
+
+  let label, cls, confText;
+  if(finalScore>=62){ label='BELI (BUY)'; cls='signal-buy'; }
+  else if(finalScore<=38){ label='JUAL (SELL)'; cls='signal-sell'; }
+  else { label='TAHAN (HOLD)'; cls='signal-hold'; }
+  confText = 'Skor probabilitas: ' + finalScore.toFixed(1) + ' / 100';
+
+  sigEl.textContent = label;
+  sigEl.className = 'signal-label ' + cls;
+  confEl.textContent = confText;
+}
+
+// ---------- data fetching ----------
+const errBox = document.getElementById('errBox');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+
+async function loadOHLC(coin){
+  try{
+    const url = `https://api.coingecko.com/api/v3/coins/${coin.cg}/ohlc?vs_currency=idr&days=1`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json(); // [[time,open,high,low,close], ...] candle ~30 menit
+    if(!Array.isArray(data) || data.length < 25) throw new Error('data candle tidak cukup');
+    const closes = data.map(k=>k[4]).filter(n=>typeof n==='number' && !isNaN(n));
+    state[coin.sym].closes = closes;
+    const result = computeScore(closes);
+    if(result) state[coin.sym].score = result.finalScore;
+    drawSpark(coin.sym, closes, coin.accent);
+    updateSignalUI(coin.sym, result);
+    return true;
+  }catch(e){
+    errBox.textContent = 'Gagal mengambil candle dari CoinGecko untuk ' + coin.name + '. Kemungkinan kena rate limit (maks ±10-15 request/menit tanpa API key) atau koneksi ke api.coingecko.com diblokir.';
+    return false;
+  }
+}
+
+async function loadAllTickers(){
+  try{
+    const ids = COINS.map(c=>c.cg).join(',');
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=idr&include_24hr_change=true`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    COINS.forEach(c=>{
+      const d = data[c.cg];
+      if(!d) return;
+      state[c.sym].price = d.idr;
+      state[c.sym].changePct = d.idr_24h_change;
+      document.getElementById('price-'+c.sym).textContent = fmtIDR(d.idr);
+      const chgEl = document.getElementById('change-'+c.sym);
+      chgEl.textContent = (d.idr_24h_change>=0?'▲ +':'▼ ')+d.idr_24h_change.toFixed(2)+'% (24j)';
+      chgEl.className = 'coin-change num ' + (d.idr_24h_change>=0?'up':'down');
+    });
+    renderTape();
+    statusDot.classList.remove('off');
+    statusText.textContent = 'live · terhubung ke CoinGecko';
+    errBox.textContent = '';
+    return true;
+  }catch(e){
+    statusDot.classList.add('off');
+    statusText.textContent = 'terputus dari CoinGecko';
+    errBox.textContent = 'Gagal mengambil harga dari CoinGecko (simple/price). Cek koneksi jaringan, kena rate limit, atau api.coingecko.com diblokir di jaringan kamu.';
+    return false;
+  }
+}
+
+async function initAll(){
+  statusText.textContent = 'memuat data…';
+  await loadAllTickers();
+  const results = await Promise.all(COINS.map(c=>loadOHLC(c)));
+  if(results.every(r=>!r)){
+    statusDot.classList.add('off');
+    statusText.textContent = 'gagal terhubung';
+  }
+}
+initAll();
+setInterval(loadAllTickers, 30000);                          // harga & perubahan 24 jam tiap 30 detik
+setInterval(()=>{ COINS.forEach(c=>loadOHLC(c)); }, 120000);  // indikator & sinyal tiap 2 menit
+renderTape();
+</script>
+</body>
+</html>
